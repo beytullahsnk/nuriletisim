@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nur İletişim Vodafone — Site vitrine
 
-## Getting Started
+Site vitrine pour la boutique **Nur İletişim Vodafone** (Kartal/İstanbul) — vente de téléphones (neufs et reconditionnés), services Vodafone, recharges mobiles et atelier de réparation. Interface 100 % en turc avec un design inspiré d'Apple.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router) + **TypeScript**
+- **Tailwind CSS v4**
+- **Drizzle ORM** + **Turso** (libSQL/SQLite cloud) — fallback local SQLite en dev
+- **Vercel Blob** pour l'upload d'images — fallback `public/uploads/` en dev
+- **iron-session** + **bcrypt** pour l'auth admin
+
+## Démarrage local
 
 ```bash
+npm install
+cp .env.local.example .env.local
+npm run db:migrate     # crée local.db et applique le schéma
+npm run db:seed        # ajoute 6 téléphones de démo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvrir http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+En dev, sans `ADMIN_PASSWORD_HASH` défini dans `.env.local`, le mot de passe admin est **`admin`**. Page de login : http://localhost:3000/admin/giris.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Configuration production
 
-## Learn More
+Dans `.env.local` (et sur Vercel) :
 
-To learn more about Next.js, take a look at the following resources:
+```
+TURSO_DATABASE_URL=libsql://<your-db>.turso.io
+TURSO_AUTH_TOKEN=<token>
+BLOB_READ_WRITE_TOKEN=<auto-injected by Vercel Blob>
+ADMIN_PASSWORD_HASH=<bcrypt hash, voir ci-dessous>
+SESSION_SECRET=<32+ caractères aléatoires>
+NEXT_PUBLIC_SITE_URL=https://nuriletisim.vercel.app
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Générer le hash du mot de passe admin
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run hash-password
+# entrer le mot de passe à l'invite
+# copier la ligne ADMIN_PASSWORD_HASH=... dans .env.local
+```
 
-## Deploy on Vercel
+### Setup Turso (database)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Créer un compte sur https://turso.tech
+2. `turso db create nuriletisim`
+3. `turso db show --url nuriletisim` → `TURSO_DATABASE_URL`
+4. `turso db tokens create nuriletisim` → `TURSO_AUTH_TOKEN`
+5. `npm run db:migrate` (en pointant vers Turso)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Setup Vercel Blob
+
+Sur le dashboard Vercel : Storage → Blob → Create. Le token `BLOB_READ_WRITE_TOKEN` est injecté automatiquement dans le projet.
+
+## Scripts
+
+| Commande | Description |
+|---|---|
+| `npm run dev` | Serveur de développement |
+| `npm run build` | Build production |
+| `npm run db:generate` | Génère une nouvelle migration Drizzle |
+| `npm run db:migrate` | Applique les migrations |
+| `npm run db:seed` | Réinitialise et insère les 6 téléphones de démo |
+| `npm run db:studio` | Drizzle Studio (UI web pour inspecter la DB) |
+| `npm run hash-password` | Génère un hash bcrypt pour `ADMIN_PASSWORD_HASH` |
+
+## Structure
+
+```
+app/
+├── (site)/              # Pages publiques (avec Header/Footer)
+│   ├── page.tsx         # Anasayfa (homepage)
+│   ├── telefonlar/      # Catalogue + détail produit
+│   ├── hizmetler/       # Page services
+│   └── iletisim/        # Page contact
+├── admin/
+│   ├── giris/           # Login
+│   └── (panel)/         # Dashboard admin (auth requise)
+│       ├── page.tsx     # Liste des téléphones
+│       └── telefon/     # Création / édition
+├── api/
+│   ├── auth/            # Login / logout
+│   ├── phones/          # CRUD téléphones
+│   └── upload/          # Upload images
+└── layout.tsx           # Root layout
+components/              # Header, Footer, PhoneCard, ServiceCard, etc.
+lib/
+├── db/                  # Drizzle (schema, client, queries)
+├── auth.ts              # iron-session + bcrypt
+├── blob.ts              # Upload Vercel Blob (+ fallback local)
+├── slug.ts              # Slug TR-aware
+├── format.ts            # Formatage TRY
+└── constants.ts         # Infos boutique, marques
+scripts/                 # migrate, seed, hash-password
+```
+
+## Déploiement Vercel
+
+1. `git init && git add . && git commit -m "Initial"`
+2. Push vers GitHub.
+3. Importer dans Vercel → connecter le repo.
+4. Renseigner les variables d'env (voir ci-dessus).
+5. Activer Vercel Blob dans Storage.
+6. Déployer.
+
+Après le premier deploy, lancer les migrations sur la Turso de production : `TURSO_DATABASE_URL=... TURSO_AUTH_TOKEN=... npm run db:migrate`.
+
+## Mağaza bilgileri (constantes)
+
+Toutes les infos boutique (adresse, téléphone, horaires, embed Google Maps) sont dans [`lib/constants.ts`](./lib/constants.ts). Pour modifier : éditer ce fichier puis redéployer.
