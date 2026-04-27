@@ -51,7 +51,11 @@ npm run hash-password
 2. `turso db create nuriletisim`
 3. `turso db show --url nuriletisim` → `TURSO_DATABASE_URL`
 4. `turso db tokens create nuriletisim` → `TURSO_AUTH_TOKEN`
-5. `npm run db:migrate` (en pointant vers Turso)
+5. Ajouter ces deux variables dans Vercel (Project Settings → Environment Variables).
+
+Les migrations Drizzle s'appliquent **automatiquement** au build Vercel via le `prebuild` script — pas besoin de migration manuelle après le premier deploy.
+
+> **Important** : Si Vercel build sans `TURSO_DATABASE_URL`, les migrations sont skippées proprement et le site charge avec un catalogue vide (les queries DB sont fault-tolerant). Configurer Turso dès que possible pour activer le panneau admin.
 
 ### Setup Vercel Blob
 

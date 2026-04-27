@@ -6,6 +6,9 @@ import { LocationMap } from "@/components/LocationMap";
 import { getFeaturedPhones } from "@/lib/db/queries";
 import { SHOP } from "@/lib/constants";
 
+// Don't prerender at build time — phones come from Turso at request time.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const featured = await getFeaturedPhones(4);
 
